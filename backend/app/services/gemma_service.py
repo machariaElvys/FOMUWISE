@@ -1,5 +1,7 @@
 import json
+import logging
 import os
+import time
 
 from app.errors import ApiError
 
@@ -23,9 +25,24 @@ class GemmaService:
     def _call(self, prompt):
         try:
             from google import genai
+            from google.genai import types
 
             client = genai.Client(api_key=self.api_key)
-            response = client.models.generate_content(model=self.model, contents=prompt)
+            started_at = time.perf_counter()
+            response = client.models.generate_content(
+                model=self.model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(thinking_level="minimal"),
+                    max_output_tokens=3072,
+                ),
+            )
+            logging.getLogger(__name__).info(
+                "Gemma request finished in %.2fs (prompt=%d chars, response=%d chars)",
+                time.perf_counter() - started_at,
+                len(prompt),
+                len(response.text or ""),
+            )
             text = (response.text or "").strip()
             fence = chr(96) * 3
             if text.startswith(fence):
