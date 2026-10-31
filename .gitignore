@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+backend/.env
+backend/instance/
+frontend/node_modules/
+frontend/.npm-cache/
+frontend/dist/
+.DS_Store
+Thumbs.db
+
+backend/.env*
+!backend/.env.example
