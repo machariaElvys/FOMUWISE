@@ -44,6 +44,8 @@ def analysis_prompt(page_texts):
         "whether any named applicant qualifies. Copy a short exact evidence_quote from the "
         "cited page for every item. Preserve date wording in date_text; use normalized_date "
         "only when unambiguous, otherwise null. Use empty arrays when a category is absent. "
+        "Keep each item concise and do not repeat facts, but include every distinct eligibility "
+        "condition, deadline, exception, required document, application step, and warning. "
         "Return one JSON object matching this example, without markdown or extra commentary:\n"
         + json.dumps(schema, ensure_ascii=False)
         + "\n\nNOTICE PAGES:\n"

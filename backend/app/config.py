@@ -18,3 +18,5 @@ class Config:
     MAX_TEXT_CHARS = int(os.getenv("MAX_TEXT_CHARS", "120000"))
     MAX_QUESTION_LENGTH = int(os.getenv("MAX_QUESTION_LENGTH", "500"))
     MAX_PROMPT_CHARS = int(os.getenv("MAX_PROMPT_CHARS", "24000"))
+    MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "16384"))
+

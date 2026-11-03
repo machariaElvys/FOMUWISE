@@ -1,8 +1,10 @@
+import json
 import secrets
 import uuid
 from datetime import timedelta
+from time import perf_counter
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request
 
 from app import db
 from app.errors import ApiError
@@ -22,6 +24,22 @@ from app.time_utils import utcnow
 documents_bp = Blueprint("documents", __name__)
 
 
+@documents_bp.after_request
+def log_document_analysis_metrics(response):
+    metrics = getattr(g, "fomuwise_analysis_metrics", None)
+    if metrics is not None:
+        event = {key: value for key, value in metrics.items() if not key.startswith("_")}
+        event.update(
+            {
+                "event": "document_analysis",
+                "http_status": response.status_code,
+                "total_endpoint_seconds": round(perf_counter() - metrics["_started"], 3),
+            }
+        )
+        current_app.logger.info("fomuwise_analysis %s", json.dumps(event, sort_keys=True))
+    return response
+
+
 def _filename(upload_name):
     name = (upload_name or "").replace("\\", "/").split("/")[-1].strip()
     return name[:255] or "application-notice.pdf"
@@ -34,6 +52,23 @@ def _gemma():
 
 @documents_bp.post("/documents")
 def upload_document():
+    metrics = {
+        "request_id": uuid.uuid4().hex[:12],
+        "_started": perf_counter(),
+        "pdf_extraction_seconds": None,
+        "extracted_text_characters": 0,
+        "prompt_construction_seconds": 0.0,
+        "initial_prompt_characters": 0,
+        "gemini_request_seconds": 0.0,
+        "gemini_input_characters": 0,
+        "gemini_output_characters": 0,
+        "ai_call_count": 0,
+        "database_save_seconds": None,
+        "expired_document_cleanup_seconds": None,
+        "token_usage": {},
+        "json_repair_used": False,
+    }
+    g.fomuwise_analysis_metrics = metrics
     if "file" not in request.files:
         raise ApiError("FILE_REQUIRED", "Choose a PDF file to analyse.", 400)
     upload = request.files["file"]
@@ -45,14 +80,20 @@ def upload_document():
     if len(pdf_bytes) > max_bytes:
         raise ApiError("UPLOAD_TOO_LARGE", "The PDF exceeds the configured upload limit.", 413)
 
-    pages = extract_pdf_pages(pdf_bytes, current_app.config["MAX_PDF_PAGES"])
-    if sum(len(page) for page in pages) > current_app.config["MAX_TEXT_CHARS"]:
+    extraction_started = perf_counter()
+    try:
+        pages = extract_pdf_pages(pdf_bytes, current_app.config["MAX_PDF_PAGES"])
+    finally:
+        metrics["pdf_extraction_seconds"] = round(perf_counter() - extraction_started, 3)
+    extracted_chars = sum(len(page) for page in pages)
+    metrics["extracted_text_characters"] = extracted_chars
+    if extracted_chars > current_app.config["MAX_TEXT_CHARS"]:
         raise ApiError(
             "TEXT_TOO_LONG",
             "This PDF contains more text than FomuWise can process at once.",
             413,
         )
-    analysis = analyze_pages(pages, _gemma())
+    analysis = analyze_pages(pages, _gemma(), metrics=metrics)
     now = utcnow()
     access_token = secrets.token_urlsafe(32)
     document = Document(
@@ -71,8 +112,15 @@ def upload_document():
         ],
     )
 
+    database_started = perf_counter()
+    cleanup_started = perf_counter()
     try:
-        delete_expired_documents()
+        try:
+            delete_expired_documents()
+        finally:
+            metrics["expired_document_cleanup_seconds"] = round(
+                perf_counter() - cleanup_started, 3
+            )
         db.session.add(document)
         db.session.commit()
     except Exception:
@@ -83,6 +131,8 @@ def upload_document():
             "The temporary workspace could not be saved. Please try again.",
             503,
         )
+    finally:
+        metrics["database_save_seconds"] = round(perf_counter() - database_started, 3)
 
     payload = document_payload(document)
     payload["access_token"] = access_token
