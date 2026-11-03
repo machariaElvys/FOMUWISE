@@ -207,32 +207,32 @@ function App() {
           <span className="brand-mark" aria-hidden="true">
             <svg viewBox="0 0 40 40" role="img">
               <path d="M11 8h18v5H16v6h11v5H16v9h-5V8Z" />
-              <circle cx="29" cy="28" r="6" />
+              <rect x="23" y="22" width="12" height="12" rx="2" />
               <path className="brand-check" d="m26.5 28 1.8 1.8 3.4-3.8" />
             </svg>
           </span>
           <span className="brand-name">Fomu<span>Wise</span></span>
         </a>
-        <div className="topbar-right">
+        <nav className="topbar-right" aria-label="Main navigation">
+          <span className="desk-label">Bursary &amp; scholarship desk</span>
           <span className="secure-note"><span className="secure-dot" /> Private by design</span>
-          <a className="help-link" href="#how-it-works">How it works</a>
-        </div>
+          <a className="help-link" href={documentData ? "#workspace-guide" : "#how-it-works"}>How FomuWise works </a>
+        </nav>
       </header>
 
       <main id="top">
         {!documentData ? (
+          <>
           <section className="hero-layout">
             <div className="hero-copy">
-              <span className="hero-kicker"><span className="sparkle">✳</span> Made for your next application</span>
-              <h1>Make sense of the <em>fine print.</em></h1>
+              <span className="hero-kicker"><span className="kicker-rule" aria-hidden="true" /> A clearer application desk</span>
+              <h1>Read the notice.<br /><em>Know your next step.</em></h1>
               <p className="hero-intro">
-                Turn a bursary or scholarship notice into a clear guide, a document checklist,
-                and answers you can trace back to the original PDF.
+                FomuWise turns bursary and scholarship notices into a clear, cited plan—so you can see what matters, what to gather, and when to act.
               </p>
-              <div className="hero-points">
-                <div><span className="point-icon">01</span><span>Find the requirements<br />and important dates</span></div>
-                <div><span className="point-icon">02</span><span>See a page reference<br />for every detail</span></div>
-                <div><span className="point-icon">03</span><span>Ask questions about<br />the notice</span></div>
+              <div className="hero-manifesto">
+                <span className="manifesto-mark" aria-hidden="true">F.</span>
+                <p>Every detail stays close to its page in the original notice.</p>
               </div>
               <div className="trust-note">
                 <span className="trust-icon" aria-hidden="true">✦</span>
@@ -241,11 +241,12 @@ function App() {
             </div>
 
             <div className="upload-card">
+              <div className="upload-card-topline"><span>FOMUWISE / DOCUMENT INTAKE</span><span>01—03</span></div>
               <div className="card-heading">
-                <div className="step-badge">1</div>
+                <div className="step-badge">01</div>
                 <div>
-                  <p className="eyebrow">Start with your notice</p>
-                  <h2>Upload a PDF</h2>
+                  <p className="eyebrow">Your application desk</p>
+                  <h2>Start with the notice</h2>
                 </div>
               </div>
               <form onSubmit={onUpload}>
@@ -289,7 +290,7 @@ function App() {
                   {uploading ? (
                     <><span className="spinner" /> Reading your notice…</>
                   ) : (
-                    <>Build my guide <span aria-hidden="true">↗</span></>
+                    <><span className="button-index" aria-hidden="true">01</span>Build my guide</>
                   )}
                 </button>
               </form>
@@ -300,23 +301,71 @@ function App() {
               {loadingSaved && <p className="restore-note">Checking for your current document…</p>}
               {error && <div className="error-banner" role="alert">{error}</div>}
             </div>
-            <div className="hero-orbit orbit-one" aria-hidden="true" />
-            <div className="hero-orbit orbit-two" aria-hidden="true" />
           </section>
+          <section className="how-steps" id="how-it-works" aria-labelledby="process-heading">
+            <div className="how-intro">
+              <p className="eyebrow">The FomuWise method</p>
+              <h2 id="process-heading">From notice<br />to next step.</h2>
+              <p>A simple, careful reading of the document you already have.</p>
+            </div>
+            <div className="step-stories">
+              <article className="step-story">
+                <span className="editorial-index">01</span>
+                <div><h3>Bring the notice</h3><p>Upload a text-based PDF. Your original file is discarded after its text is extracted.</p></div>
+              </article>
+              <article className="step-story">
+                <span className="editorial-index">02</span>
+                <div><h3>See what matters</h3><p>Get eligibility, required documents, dates and steps—with page references to check.</p></div>
+              </article>
+              <article className="step-story">
+                <span className="editorial-index">03</span>
+                <div><h3>Ask with context</h3><p>Ask follow-up questions grounded in that notice, then confirm details with its issuer.</p></div>
+              </article>
+            </div>
+          </section>
+          </>
         ) : (
-          <section className="workspace">
-            <div className="workspace-topline">
+          <section className="workspace" id="workspace-guide">
+            <div className="workspace-layout">
+              <aside className="workspace-sidebar" aria-label="Application workspace">
+                <div className="sidebar-file">
+                  <p className="eyebrow">Active notice</p>
+                  <div className="sidebar-file-line"><span className="sidebar-file-icon" aria-hidden="true">PDF</span><span>FomuWise desk</span></div>
+                  <strong title={documentData.filename}>{documentData.filename}</strong>
+                  <span className="sidebar-file-meta">{documentData.page_count} {documentData.page_count === 1 ? "page" : "pages"} · {formatFileSize(documentData.file_size_bytes)}</span>
+                </div>
+                <nav className="workspace-nav" aria-label="Guide sections">
+                  <a href="#workspace-overview"><span>01</span> Overview</a>
+                  <a href="#requirements"><span>02</span> Eligibility</a>
+                  <a href="#documents"><span>03</span> Documents</a>
+                  <a href="#deadlines"><span>04</span> Important dates</a>
+                  <a href="#application-steps"><span>05</span> Application steps</a>
+                  <a href="#questions"><span>06</span> Ask the notice</a>
+                </nav>
+                <div className="sidebar-progress">
+                  <div className="sidebar-progress-heading"><span>Checklist</span><strong>{completedCount}/{requiredDocuments.length}</strong></div>
+                  <div className="sidebar-progress-track" role="progressbar" aria-label="Documents prepared" aria-valuemin="0" aria-valuemax={Math.max(requiredDocuments.length, 1)} aria-valuenow={completedCount}><span style={{ width: (requiredDocuments.length ? (completedCount / requiredDocuments.length) * 100 : 0) + "%" }} /></div>
+                  <p>{requiredDocuments.length ? (requiredDocuments.length - completedCount) + " to prepare" : "No document list found"}</p>
+                </div>
+                <div className="sidebar-deadline">
+                  <p className="eyebrow">Next date</p>
+                  <strong>{analysis?.deadlines?.[0]?.date_text || "No deadline listed"}</strong>
+                  {analysis?.deadlines?.[0]?.normalized_date && <span>{formatDate(analysis.deadlines[0].normalized_date)}</span>}
+                </div>
+                <button className="sidebar-delete" type="button" onClick={onDelete} disabled={deleting}>
+                  {deleting ? "Deleting workspace…" : "Delete workspace"}
+                </button>
+              </aside>
+              <div className="workspace-main">
+            <div className="workspace-topline" id="workspace-overview">
               <div>
                 <a className="back-link" href="#top" onClick={(event) => { event.preventDefault(); void startNewNotice(); }}>
-                  <span aria-hidden="true">←</span> New notice
+                  New notice
                 </a>
                 <p className="eyebrow workspace-label">Your application guide</p>
-                <h1 className="workspace-title">You’ve got a plan.</h1>
-                <p className="workspace-subtitle">Here’s what the notice says, with the source page beside every detail.</p>
+                <h1 className="workspace-title">Your notice, made clear.</h1>
+                <p className="workspace-subtitle">A cited guide to the requirements, dates, and next steps in your PDF.</p>
               </div>
-              <button className="button button-quiet" type="button" onClick={onDelete} disabled={deleting}>
-                {deleting ? "Deleting…" : "Delete this workspace"}
-              </button>
             </div>
 
             <div className="document-strip">
@@ -333,7 +382,7 @@ function App() {
 
             {error && <div className="error-banner workspace-error" role="alert">{error}</div>}
 
-            <div className="summary-card">
+            <div className="summary-card" id="summary">
               <div className="summary-icon" aria-hidden="true">✦</div>
               <div className="summary-content">
                 <p className="eyebrow">The short version</p>
@@ -347,7 +396,7 @@ function App() {
             </div>
 
             <div className="dashboard-grid">
-              <section className="panel requirements-panel">
+              <section className="panel requirements-panel" id="requirements">
                 <SectionHeading eyebrow="Before you apply" title="Eligibility" count={analysis?.eligibility_requirements?.length || 0} />
                 {analysis?.eligibility_requirements?.length ? (
                   <ul className="detail-list">
@@ -361,9 +410,9 @@ function App() {
                 ) : <EmptyList>No eligibility criteria were found in the notice.</EmptyList>}
               </section>
 
-              <section className="panel documents-panel">
+              <section className="panel documents-panel" id="documents">
                 <SectionHeading eyebrow="Get ready" title="Your document list" count={requiredDocuments.length} />
-                <p className="panel-description">Tick items as you prepare them. This checklist stays in this browser session.</p>
+                <p className="panel-description">Use this list to keep track as you gather each supporting document.</p>
                 {requiredDocuments.length ? (
                   <ul className="checklist">
                     {requiredDocuments.map((item, index) => (
@@ -387,7 +436,7 @@ function App() {
                 )}
               </section>
 
-              <section className="panel deadlines-panel">
+              <section className="panel deadlines-panel" id="deadlines">
                 <SectionHeading eyebrow="Keep in mind" title="Important dates" count={analysis?.deadlines?.length || 0} />
                 {analysis?.deadlines?.length ? (
                   <ul className="date-list">
@@ -405,7 +454,7 @@ function App() {
                 ) : <EmptyList>No deadline was identified in the notice.</EmptyList>}
               </section>
 
-              <section className="panel steps-panel">
+              <section className="panel steps-panel" id="application-steps">
                 <SectionHeading eyebrow="What to do" title="Application steps" count={analysis?.application_steps?.length || 0} />
                 {analysis?.application_steps?.length ? (
                   <ol className="steps-list">
@@ -434,7 +483,7 @@ function App() {
               </section>
             )}
 
-            <section className="question-card">
+            <section className="question-card" id="questions">
               <div className="question-intro">
                 <span className="question-mark" aria-hidden="true">?</span>
                 <div>
@@ -455,7 +504,7 @@ function App() {
                   required
                 />
                 <button className="button button-primary" type="submit" disabled={asking || question.trim().length < 5}>
-                  {asking ? <><span className="spinner" /> Looking…</> : <>Ask <span aria-hidden="true">↗</span></>}
+                  {asking ? <><span className="spinner" /> Looking…</> : <><span className="button-index" aria-hidden="true">Q</span>Ask</>}
                 </button>
               </form>
               {answer && (
@@ -473,13 +522,15 @@ function App() {
               <span aria-hidden="true">ⓘ</span>
               <p>FomuWise explains the notice; it does not decide eligibility or submit your application. Confirm final requirements with the organisation that issued it.</p>
             </div>
+              </div>
+            </div>
           </section>
         )}
       </main>
 
-      <footer className="site-footer" id="how-it-works">
+      <footer className="site-footer" id="footer">
         <div className="footer-brand"><span className="footer-mark">F</span><strong>FomuWise</strong><span>Know what to do next.</span></div>
-        <div className="footer-caption">AI-assisted document guide · Always check the original notice</div>
+        <div className="footer-caption">Read closely. Apply confidently.</div>
       </footer>
     </div>
   );
