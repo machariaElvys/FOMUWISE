@@ -75,11 +75,12 @@ python3 -m pip install -r requirements.txt
 python3 -m pytest
 ```
 
-Frontend production build:
+Frontend tests and production build:
 
 ```bash
 cd frontend
 npm install
+npm test
 npm run build
 ```
 

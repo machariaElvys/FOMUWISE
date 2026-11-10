@@ -96,8 +96,8 @@ def client(app):
 def sample_pdf():
     document = fitz.open()
     page = document.new_page()
-    page.insert_text(
-        (72, 72),
+    page.insert_textbox(
+        fitz.Rect(72, 72, 520, 760),
         "Apply for the county bursary. Applicants must be county residents. "
         "Attach a copy of the parent/guardian ID. Submit the form by 30 November 2026. "
         "Submit the completed form to the ward office.",
