@@ -59,6 +59,9 @@ function App() {
   const [documentData, setDocumentData] = useState(null);
   const [token, setToken] = useState("");
   const [loadingSaved, setLoadingSaved] = useState(true);
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
+  const [restoreError, setRestoreError] = useState("");
+  const restoreController = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [asking, setAsking] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -75,19 +78,29 @@ function App() {
       return;
     }
 
-    getDocument(activeId, savedToken)
+    const controller = new AbortController();
+    restoreController.current = controller;
+    setLoadingSaved(true);
+    setRestoreError("");
+    getDocument(activeId, savedToken, { signal: controller.signal })
       .then((data) => {
+        if (controller.signal.aborted) return;
         setDocumentData(data);
         setToken(savedToken);
       })
-      .catch((restoreError) => {
-        clearStoredWorkspace(activeId);
-        if (restoreError.status !== 404 && restoreError.status !== 410) {
-          setError(restoreError.message);
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        if ([401, 403, 404, 410].includes(error.status)) {
+          clearStoredWorkspace(activeId);
+        } else {
+          setRestoreError(error.message);
         }
       })
-      .finally(() => setLoadingSaved(false));
-  }, []);
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingSaved(false);
+      });
+    return () => controller.abort();
+  }, [restoreAttempt]);
 
   function selectFile(candidate) {
     setError("");
@@ -114,6 +127,10 @@ function App() {
   async function onUpload(event) {
     event.preventDefault();
     if (!file || uploading) return;
+    // A late restore must never replace a newly uploaded workspace.
+    restoreController.current?.abort();
+    setLoadingSaved(false);
+    setRestoreError("");
     setUploading(true);
     setError("");
     setAnswer(null);
@@ -298,7 +315,13 @@ function App() {
                 <span aria-hidden="true">▣</span>
                 <p>Extracted text is sent to Google’s Gemini API using Gemma 4 to create your guide. Don’t upload information you aren’t allowed to share.</p>
               </div>
-              {loadingSaved && <p className="restore-note">Checking for your current document…</p>}
+              {loadingSaved && <p className="restore-note" role="status">Checking for your current document…</p>}
+              {restoreError && (
+                <div className="restore-note" role="alert">
+                  <p>Could not reopen your previous workspace. {restoreError}</p>
+                  <button className="button" type="button" disabled={uploading} onClick={() => setRestoreAttempt((attempt) => attempt + 1)}>Retry opening workspace</button>
+                </div>
+              )}
               {error && <div className="error-banner" role="alert">{error}</div>}
             </div>
           </section>

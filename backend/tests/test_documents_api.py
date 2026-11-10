@@ -1,7 +1,10 @@
+from io import BytesIO
+
+
 def upload(client, sample_pdf):
     return client.post(
         "/api/v1/documents",
-        data={"file": (sample_pdf, "notice.pdf")},
+        data={"file": (BytesIO(sample_pdf), "notice.pdf")},
         content_type="multipart/form-data",
     )
 
@@ -62,7 +65,7 @@ def test_delete_removes_workspace(client, sample_pdf):
 def test_upload_rejects_non_pdf(client):
     response = client.post(
         "/api/v1/documents",
-        data={"file": (b"not a pdf", "notice.pdf")},
+        data={"file": (BytesIO(b"not a pdf"), "notice.pdf")},
         content_type="multipart/form-data",
     )
     assert response.status_code == 415

@@ -1,23 +1,33 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1")
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api/v1")
   .replace(/\/+$/, "");
 
-async function request(path, options) {
-  let response;
+async function request(path, options = {}, timeoutMs = 120000) {
+  const signal = options.signal
+    ? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)])
+    : AbortSignal.timeout(timeoutMs);
   try {
-    response = await fetch(API_BASE + path, options);
-  } catch {
-    throw new Error("FomuWise could not reach the backend. Check that the Flask API is running.");
+    const response = await fetch(API_BASE + path, { ...options, signal });
+    const body = await response.json().catch((error) => {
+      if (signal.aborted) throw error;
+      return {};
+    });
+    if (!response.ok) {
+      const error = new Error(body?.error?.message || "The request could not be completed.");
+      error.code = body?.error?.code;
+      error.status = response.status;
+      throw error;
+    }
+    return body;
+  } catch (error) {
+    if (signal.aborted) {
+      if (options.signal?.aborted) throw error;
+      const timeoutError = new Error("The server took too long to respond. Please try again.");
+      timeoutError.code = "REQUEST_TIMEOUT";
+      throw timeoutError;
+    }
+    if (error.status) throw error;
+    throw new Error("FomuWise could not reach the backend. Please check your connection and try again.");
   }
-
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message = body?.error?.message || "The request could not be completed.";
-    const error = new Error(message);
-    error.code = body?.error?.code;
-    error.status = response.status;
-    throw error;
-  }
-  return body;
 }
 
 export function uploadDocument(file) {
@@ -26,10 +36,11 @@ export function uploadDocument(file) {
   return request("/documents", { method: "POST", body: form });
 }
 
-export function getDocument(documentId, token) {
+export function getDocument(documentId, token, { signal } = {}) {
   return request("/documents/" + encodeURIComponent(documentId), {
     headers: { "X-Document-Token": token },
-  });
+    signal,
+  }, 8000);
 }
 
 export function askQuestion(documentId, token, question) {
