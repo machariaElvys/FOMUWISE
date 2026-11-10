@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from flask import Flask, jsonify
@@ -14,6 +15,9 @@ db = SQLAlchemy()
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(Config)
+    # Keep safe timing events visible under Gunicorn without enabling SDK debug logs.
+    app.logger.setLevel(logging.INFO)
+    logging.getLogger("app.services.gemma_service").setLevel(logging.INFO)
     if test_config:
         app.config.update(test_config)
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)

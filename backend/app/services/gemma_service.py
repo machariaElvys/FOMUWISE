@@ -41,10 +41,13 @@ def _usage_counts(response):
 
 
 class GemmaService:
-    def __init__(self, api_key, model, max_output_tokens=16384):
+    def __init__(self, api_key, model, max_output_tokens=16384, timeout_ms=40000):
         self.api_key = api_key
         self.model = model
         self.max_output_tokens = int(max_output_tokens)
+        self.timeout_ms = int(timeout_ms)
+        if not 1000 <= self.timeout_ms <= 45000:
+            raise ValueError("AI_TIMEOUT_MS must be between 1000 and 45000")
         self._client = None
         self._metrics = None
         try:
@@ -65,6 +68,7 @@ class GemmaService:
             api_key,
             config.get("GEMMA_MODEL", "gemma-4-26b-a4b-it"),
             config.get("MAX_OUTPUT_TOKENS", 16384),
+            config.get("AI_TIMEOUT_MS", 40000),
         )
 
     def set_metrics(self, metrics):
@@ -74,14 +78,22 @@ class GemmaService:
             metrics["max_output_tokens"] = self.max_output_tokens
             metrics["thinking_level_configured"] = None
             metrics["genai_sdk_version"] = self.sdk_version
-            metrics["sdk_retry_options_configured"] = False
+            metrics["sdk_retry_options_configured"] = True
+            metrics["ai_timeout_ms"] = self.timeout_ms
             metrics["sdk_retry_count"] = 0
 
     def _client_for_request(self):
         if self._client is None:
             from google import genai
+            from google.genai import types
 
-            self._client = genai.Client(api_key=self.api_key)
+            self._client = genai.Client(
+                api_key=self.api_key,
+                http_options=types.HttpOptions(
+                    timeout=self.timeout_ms,
+                    retry_options=types.HttpRetryOptions(attempts=1),
+                ),
+            )
         return self._client
 
     def _call(self, prompt):
@@ -138,6 +150,20 @@ class GemmaService:
                 metrics, call_number, input_characters, output_characters, duration,
                 status, type(error).__name__, usage, client_setup_seconds
             )
+            import httpx
+
+            if isinstance(error, (httpx.TimeoutException, TimeoutError)) or status == 504:
+                raise ApiError(
+                    "AI_TIMEOUT",
+                    "The AI service took too long to respond. Please retry, or try a shorter notice.",
+                    504,
+                ) from error
+            if status in (400, 401, 403, 404):
+                raise ApiError(
+                    "AI_CONFIGURATION_ERROR",
+                    "The AI service rejected the request. The administrator should check the API key, model access, and request configuration.",
+                    503,
+                ) from error
             if status == 429:
                 raise ApiError(
                     "AI_RATE_LIMITED",
@@ -184,7 +210,8 @@ class GemmaService:
             "token_usage": usage,
             "max_output_tokens": self.max_output_tokens,
             "thinking_level_configured": None,
-            "sdk_retry_options_configured": False,
+            "sdk_retry_options_configured": True,
+            "ai_timeout_ms": self.timeout_ms,
             "sdk_retry_count": 0,
         }
         logger.info("fomuwise_ai_request %s", json.dumps(event, sort_keys=True))
@@ -210,7 +237,7 @@ class GemmaService:
                 self._metrics["repair_prompt_characters"] = len(repair_prompt)
             try:
                 return json.loads(self._call(repair_prompt))
-            except (json.JSONDecodeError, ApiError):
+            except json.JSONDecodeError:
                 raise ApiError(
                     "AI_OUTPUT_INVALID",
                     "The AI service returned an unusable response. Please retry.",
